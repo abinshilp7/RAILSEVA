@@ -15,10 +15,10 @@ import io
 # ═══════════════════════════════════════════════════════════════
 #  CONFIG  — fill these before running
 # ═══════════════════════════════════════════════════════════════
-GEMINI_KEY  = "AIzaSyA9nOgxK1hQ0LEddpVu6GChBJ2jg5VRy3o"      # aistudio.google.com → Get API key (free)
+GEMINI_KEY  = "AI_API KEY"      # aistudio.google.com → Get API key (free)
 genai.configure(api_key=GEMINI_KEY)
 
-RESEND_API_KEY  = "re_bmAQeGnH_mMydpfPiM92eUzKvCeBVvsUk"        # resend.com → API Keys → Create
+RESEND_API_KEY  = "RESENDAPI"        # resend.com → API Keys → Create
 RESEND_FROM     = "RailSeva Complaints <complaints@railseva.com>"
 # ↑ Replace railseva.com with your verified domain, OR use:
 # RESEND_FROM   = "RailSeva Complaints <onboarding@resend.dev>"  ← works instantly, no domain needed
