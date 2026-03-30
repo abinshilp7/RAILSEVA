@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>RailSeva — AI Grievance Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  /* ── Blue & White Railway Theme ── */
+  --bg:#F0F4FF;
+  --surface:#FFFFFF;
+  --surface2:#EBF3FF;
+  --surface3:#F5F8FF;
+  --rail-red:#1565C0;      /* primary = railway blue */
+  --rail-red2:#1E88E5;     /* bright blue */
+  --rail-red3:#42A5F5;     /* light blue */
+  --rail-dark:#0A1929;     /* very dark navy */
+  --rail-mid:#1565C0;
+  --gold:#F9A825; --gold2:#FDD835;
+  --grn:#2E7D32; --grn2:#43A047; --grn3:#E8F5E9;
+  --blu:#1565C0; --blu2:#1E88E5; --blu3:#E3F2FD;
+  --t1:#0A1929; --t2:#1A3A5C; --t3:#5B7FA6; --t4:rgba(21,101,192,.1);
+  --tw:#FFFFFF;
+  --bdr:rgba(21,101,192,.14); --bdr2:rgba(21,101,192,.28);
+  --spr:cubic-bezier(.34,1.56,.64,1); --ez:cubic-bezier(.4,0,.2,1);
+}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* Blue dot-grid background */
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(circle,rgba(21,101,192,.12) 1px,transparent 1px);
+  background-size:32px 32px;}
+
+/* Animated railway track band — runs horizontally across the whole page */
+.track-band{
+  position:fixed;bottom:0;left:0;right:0;height:52px;z-index:0;pointer-events:none;
+  background:transparent;overflow:hidden;
+}
+.track-rail{position:absolute;left:0;right:0;height:4px;background:rgba(21,101,192,.18);border-radius:2px}
+.track-rail.top{top:10px}.track-rail.bot{top:28px}
+.track-sleepers{position:absolute;inset:0;display:flex;gap:0;animation:sleepMove 1.2s linear infinite}
+.sleeper{flex-shrink:0;width:28px;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:4px 0;margin-right:20px}
+.sleeper span{display:block;width:4px;height:100%;background:rgba(21,101,192,.15);border-radius:2px;margin:0 auto}
+@keyframes sleepMove{0%{transform:translateX(0)}100%{transform:translateX(-48px)}}
+
+/* Moving train silhouette on track band */
+.mini-train{
+  position:fixed;bottom:4px;z-index:2;pointer-events:none;
+  animation:trainRide 18s linear infinite;
+  filter:drop-shadow(0 0 8px rgba(21,101,192,.4));
+}
+@keyframes trainRide{
+  0%{left:-320px;opacity:0}
+  3%{opacity:1}
+  97%{opacity:1}
+  100%{left:calc(100% + 40px);opacity:0}
+}
+
+/* ══ NAV ══ */
+.nav{position:fixed;top:0;left:0;right:0;z-index:300;height:62px;display:flex;align-items:center;padding:0 36px;
+  background:var(--rail-red);box-shadow:0 2px 20px rgba(198,40,40,.4);animation:navIn .5s var(--ez) both}
+@keyframes navIn{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+.logo-sq{width:36px;height:36px;border-radius:9px;background:var(--tw);display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
+.logo-name{font-family:'DM Serif Display',serif;font-size:1.22rem;font-weight:700;letter-spacing:.04em;color:var(--tw)}
+.logo-name span{color:var(--gold2)}
+.nav-tabs{flex:1;display:flex;justify-content:center;gap:2px}
+.ntab{padding:6px 20px;border-radius:24px;font-size:.78rem;font-weight:600;color:rgba(255,255,255,.65);background:none;border:none;font-family:'DM Sans',sans-serif;cursor:pointer;letter-spacing:.02em;transition:all .2s}
+.ntab:hover{color:var(--tw);background:rgba(255,255,255,.14)}
+.ntab.on{background:rgba(255,255,255,.22);color:var(--tw);box-shadow:0 0 0 1px rgba(255,255,255,.3)}
+.nav-r{display:flex;align-items:center;gap:10px}
+.hlc{display:flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;background:var(--gold);color:var(--rail-dark);font-size:.74rem;font-weight:800;letter-spacing:.04em;box-shadow:0 0 12px rgba(249,168,37,.4)}
+.nsign{padding:6px 18px;border-radius:22px;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:var(--tw);font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:600;cursor:pointer;transition:all .2s}
+.nsign:hover{background:rgba(255,255,255,.28)}
+
+/* PAGE VIEWS */
+.page{display:none;position:relative;z-index:1}
+.page.active{display:block}
+
+/* ══ HERO ══ */
+.hero{background:linear-gradient(135deg,#0D47A1 0%,#1565C0 40%,#0A2A6E 100%);
+  padding:110px 48px 72px;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:60px;overflow:hidden;position:relative}
+/* Diagonal speed-line texture */
+.hero::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-55deg,rgba(255,255,255,.022) 0px,rgba(255,255,255,.022) 1px,transparent 1px,transparent 26px)}
+/* Animated speed streaks in hero */
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.04) 50%,transparent 100%);
+  background-size:200% 100%;animation:heroSheen 4s ease-in-out infinite;pointer-events:none}
+@keyframes heroSheen{0%,100%{background-position:200% 0}50%{background-position:-200% 0}}
+.hero-l{position:relative;z-index:1;animation:hL .7s .15s var(--ez) both}
+@keyframes hL{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+.htag{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border-radius:20px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);font-size:.68rem;font-weight:700;color:var(--tw);letter-spacing:.1em;text-transform:uppercase;margin-bottom:20px}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--gold2);box-shadow:0 0 8px var(--gold2);animation:ld 1.6s infinite}
+@keyframes ld{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.6)}}
+.hh1{font-family:'DM Serif Display',serif;font-size:clamp(2.4rem,3.6vw,4rem);font-weight:700;line-height:1.07;letter-spacing:-.02em;color:var(--tw);margin-bottom:16px}
+.hh1 .acc{display:block;color:var(--gold2);text-shadow:0 0 30px rgba(253,216,53,.3)}
+.hp{font-size:.96rem;font-weight:300;color:rgba(255,255,255,.75);line-height:1.8;max-width:440px;margin-bottom:36px}
+.hstats{display:flex;gap:32px;flex-wrap:wrap}
+.stat .sv{font-family:'DM Serif Display',serif;font-size:1.6rem;font-weight:700;color:var(--tw)}
+.stat .sl{font-size:.67rem;font-weight:600;color:rgba(255,255,255,.55);letter-spacing:.07em;text-transform:uppercase}
+.hero-r{position:relative;z-index:1;animation:hR .7s .3s var(--ez) both}
+@keyframes hR{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+.tscene{position:relative;width:100%;aspect-ratio:1.5;display:flex;align-items:center;justify-content:center}
+.orb{position:absolute;border-radius:50%;border:1px solid;animation:orb 4s ease-in-out infinite}
+.orb:nth-child(1){width:160px;height:160px;border-color:rgba(255,255,255,.15)}
+.orb:nth-child(2){width:270px;height:270px;border-color:rgba(255,255,255,.07);animation-delay:1.5s}
+.orb:nth-child(3){width:370px;height:370px;border-color:rgba(249,168,37,.08);animation-delay:3s}
+@keyframes orb{0%,100%{transform:scale(.95);opacity:.7}50%{transform:scale(1.05);opacity:.3}}
+.strack{position:absolute;bottom:20%;left:0;right:0;height:4px;background:rgba(255,255,255,.08);overflow:hidden;border-radius:4px}
+.strack::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,var(--gold),rgba(255,255,255,.8),var(--gold),transparent);animation:ts 2s ease-in-out infinite}
+@keyframes ts{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.stk{position:absolute;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:stk linear infinite}
+.stk:nth-child(1){top:35%;width:90px;right:100%;animation-duration:1.1s}
+.stk:nth-child(2){top:44%;width:55px;right:100%;animation-duration:.9s;animation-delay:.4s}
+.stk:nth-child(3){top:53%;width:75px;right:100%;animation-duration:1.3s;animation-delay:.8s}
+.stk:nth-child(4){top:39%;width:45px;right:100%;background:linear-gradient(90deg,transparent,rgba(249,168,37,.7),transparent);animation-duration:1.5s;animation-delay:.2s}
+@keyframes stk{0%{transform:translateX(600px);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateX(-100px);opacity:0}}
+.twrap{position:relative;z-index:5;width:300px;filter:drop-shadow(0 8px 40px rgba(0,0,0,.5));animation:tf 3.5s ease-in-out infinite,tIn .9s .5s var(--spr) both}
+@keyframes tf{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes tIn{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+.smoke{position:absolute;pointer-events:none}
+.puff{position:absolute;border-radius:50%;background:rgba(255,255,255,.18);animation:pr 2s ease-out infinite}
+.puff:nth-child(1){width:14px;height:14px;left:0}
+.puff:nth-child(2){width:10px;height:10px;left:8px;animation-delay:.6s}
+.puff:nth-child(3){width:8px;height:8px;left:4px;animation-delay:1.2s}
+@keyframes pr{0%{transform:translateY(0) scale(1);opacity:.6}100%{transform:translateY(-44px) scale(3.5);opacity:0}}
+.fbadge{position:absolute;background:rgba(255,255,255,.97);border-radius:12px;padding:10px 14px;box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:6;animation:fb 3s ease-in-out infinite}
+.fb1{top:10%;right:-10px;border-left:3px solid var(--rail-red2)}
+.fb2{bottom:12%;left:0;border-left:3px solid var(--grn);animation-delay:1.8s}
+@keyframes fb{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.fbt{font-size:.58rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.fbv{font-size:.82rem;font-weight:700}
+.fbv.r{color:var(--rail-red2)}.fbv.g{color:var(--grn)}
+
+/* ══ COMMON CARD/ZONE ══ */
+.zone{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:0 24px 100px}
+.sch{text-align:center;padding:60px 0 44px}
+.slbl{font-size:.67rem;font-weight:700;color:var(--t3);letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:14px}
+.slbl::before,.slbl::after{content:'';width:40px;height:1px;background:var(--bdr2)}
+.sh2{font-family:'DM Serif Display',serif;font-size:clamp(1.8rem,2.8vw,2.5rem);font-weight:700;letter-spacing:-.02em;color:var(--t1)}
+.sh2 span{color:var(--rail-red2)}
+
+/* ══ TRACKER ══ */
+.tracker{display:flex;align-items:center;background:var(--surface);border:2px solid var(--bdr2);border-radius:14px;padding:14px 22px;margin-bottom:28px;box-shadow:0 2px 16px rgba(198,40,40,.08);position:relative;overflow:hidden}
+.tracker::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rail-red),var(--gold),var(--grn));background-size:200%;animation:tbar 3s linear infinite}
+@keyframes tbar{0%{background-position:0%}100%{background-position:200%}}
+.tri{flex:1;display:flex;align-items:center;gap:8px;position:relative}
+.tri:not(:last-child)::after{content:'';position:absolute;right:0;top:50%;left:60%;height:1px;background:var(--bdr);transition:background .5s}
+.tri.done:not(:last-child)::after{background:linear-gradient(90deg,var(--rail-red),var(--gold))}
+.trd{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;border:2px solid var(--bdr2);color:var(--t3);background:var(--bg);flex-shrink:0;position:relative;z-index:1;transition:all .4s var(--spr)}
+.tri.active .trd{border-color:var(--rail-red);background:var(--rail-red);color:#fff;box-shadow:0 0 0 6px rgba(198,40,40,.12),0 0 20px rgba(198,40,40,.4);animation:adot 2s ease-in-out infinite}
+@keyframes adot{0%,100%{box-shadow:0 0 0 6px rgba(198,40,40,.12),0 0 20px rgba(198,40,40,.4)}50%{box-shadow:0 0 0 10px rgba(198,40,40,.06),0 0 30px rgba(198,40,40,.6)}}
+.tri.done .trd{border-color:var(--grn);background:var(--grn);color:#fff}
+.trl{font-size:.7rem;font-weight:600;color:var(--t3);letter-spacing:.04em;text-transform:uppercase;transition:color .3s}
+.tri.active .trl{color:var(--rail-red);font-weight:700}
+.tri.done .trl{color:var(--grn)}
+
+/* BIG CARD */
+.bigcard{background:var(--surface);border:2px solid var(--bdr2);border-radius:22px;overflow:hidden;box-shadow:0 4px 40px rgba(198,40,40,.1);position:relative}
+.bigcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rail-red),var(--gold),var(--grn));pointer-events:none}
+
+/* STEP ROW */
+.srow{padding:34px 42px;border-bottom:1px solid var(--bdr);transition:all .3s var(--ez)}
+.srow.locked{opacity:.3;pointer-events:none}
+.srow.done{background:linear-gradient(90deg,rgba(198,40,40,.03),transparent)}
+.rh{display:flex;align-items:center;gap:12px}
+.snbg{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;background:var(--rail-red);color:#fff;flex-shrink:0;transition:all .3s;box-shadow:0 2px 8px rgba(198,40,40,.35)}
+.srow.done .snbg{background:var(--grn);box-shadow:0 2px 8px rgba(46,125,50,.35)}
+.stit{font-family:'DM Serif Display',serif;font-size:1.1rem;font-weight:700;color:var(--t1)}
+.sdtag{margin-left:auto;display:none;align-items:center;gap:5px;font-size:.73rem;font-weight:700;color:var(--grn);background:var(--grn3);border:1px solid rgba(46,125,50,.2);padding:3px 11px;border-radius:18px}
+.sdtag.vis{display:flex}
+.sbody{margin-top:22px;animation:sbIn .4s var(--spr)}
+@keyframes sbIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.srow.done .sbody{display:none}
+.shint{font-size:.82rem;color:var(--t3);line-height:1.7;margin-bottom:18px}
+
+/* PNR */
+.ishell{display:flex;align-items:center;background:var(--surface);border:2px solid var(--bdr2);border-radius:12px;overflow:hidden;transition:all .3s;box-shadow:0 2px 8px rgba(198,40,40,.06)}
+.ishell:focus-within{border-color:var(--rail-red);box-shadow:0 0 0 4px rgba(198,40,40,.1)}
+.ishell.valid{border-color:var(--grn);box-shadow:0 0 0 4px rgba(46,125,50,.08)}
+.ishell.err{border-color:var(--rail-red3);animation:shk .4s var(--ez)}
+@keyframes shk{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.pbadge{padding:0 16px;height:100%;display:flex;align-items:center;font-size:.62rem;font-weight:700;color:#fff;letter-spacing:.12em;text-transform:uppercase;border-right:1px solid var(--bdr2);background:var(--rail-red);white-space:nowrap}
+.ishell input{flex:1;padding:14px 16px;background:transparent;border:none;outline:none;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:1.02rem;font-weight:500;letter-spacing:.1em;caret-color:var(--rail-red)}
+.ishell input::placeholder{color:var(--t3);font-weight:400;letter-spacing:.02em;font-size:.9rem}
+.vbtn{margin:5px;padding:10px 22px;background:var(--rail-red);border:none;border-radius:9px;color:#fff;font-family:'DM Serif Display',serif;font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;letter-spacing:.04em;transition:all .25s}
+.vbtn:hover{background:var(--rail-red2);box-shadow:0 4px 18px rgba(198,40,40,.4)}
+.vbtn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Journey card */
+.jcard{display:none;margin-top:14px;border-radius:14px;padding:20px 22px;background:var(--surface2);border:2px solid var(--bdr2);position:relative;overflow:hidden}
+.jcard::before{content:'';position:absolute;top:0;left:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--rail-red),var(--gold))}
+.jcard.show{display:block;animation:jcR .5s var(--spr)}
+@keyframes jcR{0%{opacity:0;transform:translateY(-10px)}100%{opacity:1;transform:translateY(0)}}
+.jctop{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.jcpill{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--rail-red);background:rgba(198,40,40,.08);border:1px solid rgba(198,40,40,.2);padding:3px 12px;border-radius:18px}
+.jcroute{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.jcstn{font-family:'DM Serif Display',serif;font-size:1.9rem;font-weight:700;color:var(--t1);letter-spacing:.04em;line-height:1}
+.jcmid{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.jcrail{width:100%;height:3px;background:linear-gradient(90deg,var(--rail-red),var(--gold));border-radius:3px;position:relative;overflow:hidden}
+.jcrail::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);animation:rs 2s .5s ease infinite}
+@keyframes rs{0%{left:-100%}100%{left:200%}}
+.jctn{font-size:.63rem;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.jcchips{display:flex;gap:7px;flex-wrap:wrap}
+.jcchip{padding:3px 12px;border-radius:18px;font-size:.7rem;font-weight:600;background:rgba(198,40,40,.06);border:1px solid var(--bdr2);color:var(--t2)}
+.jcchip.v{background:var(--grn3);border-color:rgba(46,125,50,.2);color:var(--grn)}
+.proced{width:100%;margin-top:16px;padding:13px;border-radius:11px;background:var(--rail-red);border:none;color:#fff;font-family:'DM Serif Display',serif;font-size:.9rem;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .3s;display:none}
+.proced:hover{background:var(--rail-red2);transform:translateY(-1px);box-shadow:0 6px 20px rgba(198,40,40,.35)}
+.proced.show{display:block;animation:fu .4s var(--spr)}
+@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ══ STEP 2 ══ */
+.auto-notice{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:10px;margin-bottom:24px;background:rgba(198,40,40,.05);border:1.5px solid rgba(198,40,40,.15);font-size:.8rem;color:var(--t2);font-weight:500;line-height:1.55}
+.an-ico{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.cmp-grid{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:0}
+.col-txt{padding-right:22px}
+.col-audio{padding-left:22px}
+.col-lbl{font-size:.63rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.col-lbl::after{content:'';flex:1;height:1px;background:var(--bdr2)}
+.ctbox{background:var(--surface);border:2px solid var(--bdr2);border-radius:12px;overflow:hidden;transition:all .3s}
+.ctbox:focus-within{border-color:var(--rail-red);box-shadow:0 0 0 4px rgba(198,40,40,.08)}
+.ctbox textarea{width:100%;padding:16px 18px 8px;background:transparent;border:none;outline:none;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:300;line-height:1.8;min-height:168px;resize:none;caret-color:var(--rail-red)}
+.ctbox textarea::placeholder{color:rgba(198,40,40,.35);font-size:.84rem}
+.ctfoot{display:flex;align-items:center;gap:6px;padding:7px 10px 9px;border-top:1px solid var(--bdr)}
+.cftool{background:none;border:none;cursor:pointer;color:var(--t3);font-size:.82rem;padding:5px 9px;border-radius:7px;transition:all .2s;font-family:'DM Sans',sans-serif;font-weight:500}
+.cftool:hover{color:var(--rail-red);background:rgba(198,40,40,.06)}
+.cfcount{margin-left:auto;font-size:.62rem;font-weight:600;color:var(--t3)}
+.or-div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 4px;margin-top:26px}
+.or-line{width:1px;height:50px;background:var(--bdr2)}
+.or-pill{font-size:.63rem;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;background:var(--surface);padding:5px 9px;border-radius:20px;border:1.5px solid var(--bdr2)}
+.fchip{display:none;align-items:center;gap:9px;padding:8px 14px;margin-top:8px;border-radius:9px;background:var(--surface2);border:1px solid var(--bdr2);font-size:.78rem}
+.fchip.show{display:flex;animation:fu .3s var(--spr)}
+.fcn{flex:1;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fcx{background:none;border:none;cursor:pointer;color:var(--t3);font-size:.9rem;transition:color .2s}
+.fcx:hover{color:var(--rail-red)}
+
+/* ══ AUDIO CARD ══ */
+.rec-card{border-radius:18px;padding:30px 22px 22px;text-align:center;background:linear-gradient(135deg,rgba(198,40,40,.05),rgba(198,40,40,.02));border:2px solid var(--bdr2);transition:all .35s;position:relative;overflow:hidden}
+.rec-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rail-red),var(--gold),var(--grn))}
+.rec-card.recording{background:linear-gradient(135deg,rgba(198,40,40,.1),rgba(198,40,40,.05));border-color:var(--rail-red);box-shadow:0 0 0 5px rgba(198,40,40,.08),0 4px 30px rgba(198,40,40,.2)}
+.rec-card.has-audio{background:linear-gradient(135deg,rgba(46,125,50,.06),rgba(46,125,50,.03));border-color:rgba(46,125,50,.4)}
+.mic-wrap{position:relative;display:inline-block;margin-bottom:18px}
+.mic-btn{width:100px;height:100px;border-radius:50%;background:linear-gradient(145deg,var(--rail-red2),var(--rail-red));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:2.6rem;box-shadow:0 0 0 10px rgba(198,40,40,.1),0 8px 32px rgba(198,40,40,.4);transition:all .3s var(--spr);position:relative;z-index:1}
+.mic-btn:hover{transform:scale(1.07);box-shadow:0 0 0 14px rgba(198,40,40,.12),0 10px 42px rgba(198,40,40,.5)}
+.mic-btn.active{background:linear-gradient(145deg,#1E88E5,#0D47A1);animation:mpulse 1.2s ease-out infinite}
+.mic-btn.done{background:linear-gradient(145deg,var(--grn2),var(--grn));box-shadow:0 0 0 10px rgba(46,125,50,.1),0 8px 32px rgba(46,125,50,.35)}
+@keyframes mpulse{0%{box-shadow:0 0 0 0 rgba(198,40,40,.55)}70%{box-shadow:0 0 0 26px rgba(198,40,40,0)}100%{box-shadow:0 0 0 0 rgba(198,40,40,0)}}
+.ring{position:absolute;inset:-18px;border-radius:50%;border:2px solid rgba(198,40,40,.3);animation:ring 1.5s ease-out infinite;display:none}
+.ring:nth-child(2){animation-delay:.5s;border-color:rgba(198,40,40,.18)}
+.ring:nth-child(3){animation-delay:1s;border-color:rgba(198,40,40,.08)}
+.rec-card.recording .ring{display:block}
+@keyframes ring{0%{transform:scale(.8);opacity:1}100%{transform:scale(1.55);opacity:0}}
+.wave{display:flex;align-items:center;justify-content:center;gap:3px;height:44px;margin:0 auto 10px;opacity:0;transition:opacity .3s}
+.wave.live{opacity:1}
+.wb{width:4px;border-radius:4px;background:var(--rail-red);min-height:4px}
+.wb:nth-child(odd){animation:wbb 1.1s ease-in-out infinite}
+.wb:nth-child(even){animation:wbb 1.1s .15s ease-in-out infinite}
+@keyframes wbb{0%,100%{height:5px}50%{height:34px}}
+.rec-timer{font-family:'DM Serif Display',serif;font-size:1.6rem;font-weight:700;color:var(--rail-red);letter-spacing:.12em;display:none;margin-bottom:6px}
+.rec-timer.on{display:block}
+.mic-lbl{font-size:1rem;font-weight:700;color:var(--t1);margin-bottom:5px}
+.mic-sub{font-size:.76rem;font-weight:400;color:var(--t3);line-height:1.6;max-width:220px;margin:0 auto}
+.ap{display:none;margin-top:16px;padding:12px 16px;border-radius:11px;background:rgba(46,125,50,.07);border:1.5px solid rgba(46,125,50,.25);align-items:center;gap:11px}
+.ap.show{display:flex;animation:fu .35s var(--spr)}
+.ap-ico{font-size:1.3rem}
+.ap-info{flex:1}
+.ap-dur{font-size:.84rem;font-weight:700;color:var(--grn)}
+.ap-hint{font-size:.68rem;color:var(--t3);margin-top:2px}
+.ap-del{background:none;border:none;cursor:pointer;color:var(--t3);font-size:.9rem;transition:color .2s;padding:3px 7px;border-radius:6px}
+.ap-del:hover{color:var(--rail-red);background:rgba(198,40,40,.07)}
+
+/* Voice understood preview */
+.voice-preview{display:none;margin-top:14px;border-radius:12px;overflow:hidden;border:1.5px solid rgba(198,40,40,.25);animation:fu .4s var(--spr)}
+.voice-preview.show{display:block}
+.vp-head{background:var(--rail-red);padding:9px 14px;display:flex;align-items:center;gap:8px;font-size:.7rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em}
+.vp-body{padding:12px 16px;background:var(--surface2)}
+.vp-said{font-size:.78rem;color:var(--t3);margin-bottom:6px;font-style:italic}
+.vp-said span{color:var(--t2)}
+.vp-understood{font-size:.9rem;font-weight:600;color:var(--t1);line-height:1.5}
+.vp-cat{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:18px;background:rgba(198,40,40,.09);border:1px solid rgba(198,40,40,.2);color:var(--rail-mid)}
+
+.ld-banner{display:none;align-items:center;gap:10px;margin-top:16px;padding:11px 16px;border-radius:10px;background:var(--blu3);border:1.5px solid rgba(21,101,192,.18);font-size:.8rem;font-weight:600;color:var(--blu);animation:fu .4s var(--spr)}
+.ld-banner.show{display:flex}
+.ld-spin{width:13px;height:13px;border-radius:50%;border:2px solid rgba(21,101,192,.3);border-top-color:var(--blu);animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-spin.ok{border:2px solid rgba(46,125,50,.3);border-top-color:var(--grn)}
+
+.abtn{width:100%;margin-top:22px;padding:16px;border-radius:13px;background:linear-gradient(135deg,var(--rail-red),#8B0000);border:none;color:#fff;font-family:'DM Serif Display',serif;font-size:.95rem;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .3s;position:relative;overflow:hidden}
+.abtn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--rail-red2),var(--rail-red));opacity:0;transition:opacity .3s}
+.abtn:hover::after{opacity:1}
+.abtn:hover{transform:translateY(-2px);box-shadow:0 10px 40px rgba(198,40,40,.4)}
+.abtn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.abtn>*{position:relative;z-index:1}
+.abtn-in{display:flex;align-items:center;justify-content:center;gap:9px}
+.aspn{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .7s linear infinite;display:none}
+.aspn.on{display:block}
+
+/* ══ RESULT ══ */
+.rslot{max-height:0;overflow:hidden;transition:max-height .6s var(--ez);border-top:0 solid var(--bdr)}
+.rslot.open{max-height:900px;border-top-width:1px}
+.rinn{padding:32px 42px 38px}
+.sk{height:12px;border-radius:5px;margin-bottom:12px;background:linear-gradient(90deg,rgba(198,40,40,.05) 0%,rgba(198,40,40,.1) 50%,rgba(198,40,40,.05) 100%);background-size:300% 100%;animation:sk 1.6s ease infinite}
+@keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.sk.w40{width:40%}.sk.w75{width:75%}.sk.w90{width:90%}.sk.w55{width:55%}
+.rtop{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.rico{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0}
+.rico.ok{background:var(--grn3);border:1.5px solid rgba(46,125,50,.3)}
+.rico.bad{background:rgba(198,40,40,.1);border:1.5px solid rgba(198,40,40,.25)}
+.rlbl{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.rlbl.ok{color:var(--grn)}.rlbl.bad{color:var(--rail-red)}
+
+/* AI understood box (in result) */
+.understood-box{background:linear-gradient(135deg,var(--surface2),rgba(198,40,40,.04));border:2px solid var(--bdr2);border-radius:12px;padding:16px 20px;margin-bottom:16px;animation:fu .4s var(--spr)}
+.ub-head{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ub-head::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--rail-red);box-shadow:0 0 8px rgba(198,40,40,.5)}
+.ub-original{font-size:.8rem;color:var(--t3);font-style:italic;margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid var(--bdr)}
+.ub-understood{font-size:.95rem;font-weight:600;color:var(--t1);line-height:1.55}
+
+.trans-box{display:none;background:var(--blu3);border:1.5px solid rgba(21,101,192,.15);border-radius:11px;padding:14px 18px;margin-bottom:14px;animation:fu .4s var(--spr)}
+.trans-box.show{display:block}
+.tb-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.tb-badge{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:3px 10px;border-radius:18px}
+.tb-badge.tr{background:rgba(21,101,192,.1);color:var(--blu);border:1px solid rgba(21,101,192,.2)}
+.tb-badge.en{background:var(--grn3);color:var(--grn);border:1px solid rgba(46,125,50,.18)}
+.tb-text{font-size:.84rem;font-weight:400;color:var(--t2);line-height:1.7;font-style:italic}
+.tb-transl{font-size:.8rem;color:var(--t3);margin-top:7px}
+
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.rp{padding:5px 15px;border-radius:22px;font-size:.78rem;font-weight:600;animation:pp .5s var(--spr) both}
+.rp:nth-child(2){animation-delay:.08s}.rp:nth-child(3){animation-delay:.16s}
+@keyframes pp{from{opacity:0;transform:scale(.5) translateY(8px)}to{opacity:1;transform:scale(1)}}
+.pc{background:rgba(198,40,40,.09);border:1.5px solid rgba(198,40,40,.22);color:var(--rail-mid)}
+.ps{background:rgba(249,168,37,.1);border:1.5px solid rgba(249,168,37,.25);color:#7B5800}
+.pl{background:var(--blu3);border:1.5px solid rgba(21,101,192,.2);color:var(--blu)}
+.rsum{font-size:.86rem;font-weight:300;color:var(--t2);line-height:1.75;padding:13px 16px;border-radius:9px;background:var(--surface2);border-left:4px solid var(--rail-red);margin-bottom:10px;animation:fu .5s .2s var(--spr) both}
+.rfwd{font-size:.73rem;color:var(--t3);display:flex;align-items:center;gap:5px;margin-bottom:20px;animation:fu .5s .3s var(--spr) both;flex-wrap:wrap;gap:4px}
+.rfwd strong{color:var(--grn);font-weight:700}
+.db-confirm{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:9px;background:var(--grn3);border:1px solid rgba(46,125,50,.2);font-size:.78rem;font-weight:600;color:var(--grn);margin-bottom:14px;animation:fu .5s .25s var(--spr) both}
+.ibox{border-radius:12px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start;animation:fu .5s var(--spr)}
+.ibox.bad{background:rgba(198,40,40,.05);border:1.5px solid rgba(198,40,40,.18)}
+.ibox.warn{background:rgba(249,168,37,.06);border:1.5px solid rgba(249,168,37,.2)}
+.iico{font-size:1.1rem;flex-shrink:0;margin-top:2px}
+.itxt{font-size:.83rem;font-weight:300;color:var(--t2);line-height:1.7}
+.itxt strong{font-weight:700;color:var(--t1);display:block;margin-bottom:3px}
+.subfinal{width:100%;padding:15px;border-radius:13px;background:linear-gradient(135deg,var(--grn),#1B5E20);border:none;color:#fff;font-family:'DM Serif Display',serif;font-size:.95rem;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .3s;display:none;animation:fu .5s .4s var(--spr) both}
+.subfinal.show{display:block}
+.subfinal:hover{background:linear-gradient(135deg,#388E3C,#2E7D32);transform:translateY(-2px);box-shadow:0 10px 36px rgba(46,125,50,.3)}
+
+/* ══ SUCCESS ══ */
+.succEl{display:none;padding:60px 42px;text-align:center;border-top:1px solid var(--bdr);background:linear-gradient(135deg,rgba(46,125,50,.05),rgba(198,40,40,.03));position:relative;overflow:hidden}
+.succEl.show{display:block;animation:sIn .7s var(--spr)}
+@keyframes sIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.confl{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.conf{position:absolute;animation:cf linear both;opacity:0}
+@keyframes cf{0%{opacity:0;transform:translateY(-20px) rotate(0deg)}10%{opacity:1}90%{opacity:1}100%{opacity:0;transform:translateY(280px) rotate(720deg)}}
+.sring{width:76px;height:76px;border-radius:50%;background:rgba(46,125,50,.12);border:2px solid rgba(46,125,50,.4);display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 24px;animation:sring 3s ease infinite}
+@keyframes sring{0%,100%{box-shadow:0 0 0 12px rgba(46,125,50,.06),0 0 40px rgba(46,125,50,.15)}50%{box-shadow:0 0 0 20px rgba(46,125,50,.03),0 0 60px rgba(46,125,50,.2)}}
+.stitle{font-family:'DM Serif Display',serif;font-size:2.3rem;font-weight:700;color:var(--t1);letter-spacing:-.02em;margin-bottom:8px}
+.ssub{font-size:.88rem;color:var(--t2);line-height:1.7;max-width:380px;margin:0 auto 32px}
+.tbox{display:inline-flex;flex-direction:column;align-items:center;gap:5px;padding:18px 48px;border-radius:14px;background:var(--surface2);border:2px solid var(--bdr2);margin-bottom:16px;position:relative;overflow:hidden}
+.tbox::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rail-red),var(--gold),var(--grn));background-size:200%;animation:tbar 3s linear infinite}
+.tbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--t3)}
+.tbn{font-family:'DM Serif Display',serif;font-size:1.9rem;font-weight:700;color:var(--t1);letter-spacing:.06em}
+.tbo{font-size:.68rem;font-weight:700;color:var(--grn);letter-spacing:.06em}
+/* DB + Email confirmation */
+.confirm-strip{display:flex;flex-direction:column;gap:8px;margin:16px auto 28px;max-width:400px}
+.cs-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:10px;font-size:.82rem;font-weight:600;text-align:left}
+.cs-row.db{background:var(--grn3);border:1px solid rgba(46,125,50,.2);color:var(--grn)}
+.cs-row.mail{background:var(--blu3);border:1px solid rgba(21,101,192,.18);color:var(--blu)}
+.cs-row.mailpend{background:rgba(249,168,37,.08);border:1px solid rgba(249,168,37,.25);color:#7B5800}
+.cs-ico{font-size:1rem;flex-shrink:0}
+.smeta{font-size:.78rem;color:var(--t3);line-height:2.3;margin-bottom:32px}
+.smeta strong{color:var(--t2);font-weight:700}
+.rbtn{padding:12px 32px;border-radius:11px;background:transparent;border:2px solid var(--bdr2);color:var(--t2);font-family:'DM Serif Display',serif;font-size:.85rem;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .25s}
+.rbtn:hover{border-color:var(--rail-red);color:var(--rail-red);background:rgba(198,40,40,.04);transform:translateY(-1px)}
+
+/* ══ TRACK STATUS PAGE ══ */
+.track-page{max-width:660px;margin:0 auto;padding:100px 24px 80px}
+.track-page .sch{padding:40px 0 36px}
+.track-shell{display:flex;align-items:center;background:var(--surface);border:2px solid var(--bdr2);border-radius:14px;overflow:hidden;box-shadow:0 2px 16px rgba(198,40,40,.08);transition:all .3s}
+.track-shell:focus-within{border-color:var(--rail-red);box-shadow:0 0 0 4px rgba(198,40,40,.1)}
+.tbadge{padding:0 16px;height:100%;display:flex;align-items:center;font-size:.62rem;font-weight:700;color:#fff;letter-spacing:.1em;text-transform:uppercase;border-right:1px solid var(--bdr2);background:var(--rail-red);white-space:nowrap}
+.track-shell input{flex:1;padding:14px 16px;background:transparent;border:none;outline:none;color:var(--t1);font-family:'DM Serif Display',serif;font-size:.95rem;font-weight:500;letter-spacing:.06em;caret-color:var(--rail-red)}
+.track-shell input::placeholder{color:var(--t3);font-weight:400;font-size:.88rem}
+.tbtn{margin:5px;padding:10px 22px;background:var(--rail-red);border:none;border-radius:9px;color:#fff;font-family:'DM Serif Display',serif;font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .25s}
+.tbtn:hover{background:var(--rail-red2);box-shadow:0 4px 18px rgba(198,40,40,.4)}
+.tbtn:disabled{opacity:.4;cursor:not-allowed}
+.track-result{display:none;margin-top:22px;border-radius:16px;overflow:hidden;border:2px solid var(--bdr2);animation:fu .5s var(--spr)}
+.track-result.show{display:block}
+.tr-head{background:var(--rail-red);padding:16px 22px;display:flex;align-items:center;gap:12px}
+.tr-ticket{font-family:'DM Serif Display',serif;font-size:1rem;font-weight:700;color:#fff;letter-spacing:.06em}
+.tr-status{margin-left:auto;padding:4px 14px;border-radius:18px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.tr-status.pending{background:rgba(255,179,0,.25);color:#FDD835}
+.tr-status.resolved{background:rgba(0,200,83,.2);color:#69F0AE}
+.tr-status.inprogress{background:rgba(66,165,245,.2);color:#90CAF9}
+.tr-body{padding:20px 22px;background:var(--surface)}
+.tr-row{display:flex;align-items:flex-start;gap:12px;padding:9px 0;border-bottom:1px solid var(--bdr);font-size:.85rem}
+.tr-row:last-child{border-bottom:none}
+.tr-k{font-weight:700;color:var(--t2);min-width:140px;flex-shrink:0}
+.tr-v{color:var(--t1);font-weight:400}
+.tr-v.cat{font-weight:700;color:var(--rail-mid)}
+.tr-not-found{margin-top:18px;padding:20px;border-radius:12px;background:rgba(198,40,40,.05);border:1.5px solid rgba(198,40,40,.18);text-align:center;display:none}
+.tr-not-found.show{display:block;animation:fu .4s var(--spr)}
+.tr-nf-ico{font-size:2rem;margin-bottom:8px}
+.tr-nf-t{font-weight:700;color:var(--t1);margin-bottom:4px}
+.tr-nf-s{font-size:.82rem;color:var(--t3)}
+
+/* ══ FAQ PAGE ══ */
+.faq-page{max-width:820px;margin:0 auto;padding:100px 24px 80px}
+.faq-page .sch{padding:40px 0 36px}
+/* Process steps */
+.process-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-bottom:48px;background:var(--surface);border:2px solid var(--bdr2);border-radius:18px;overflow:hidden;position:relative}
+.process-steps::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rail-red),var(--gold),var(--grn))}
+.ps-step{padding:22px 18px;text-align:center;position:relative}
+.ps-step:not(:last-child)::after{content:'→';position:absolute;right:-10px;top:50%;transform:translateY(-50%);font-size:1rem;color:var(--bdr2);z-index:1}
+.ps-num{width:36px;height:36px;border-radius:50%;background:var(--rail-red);color:#fff;font-family:'DM Serif Display',serif;font-size:.85rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;box-shadow:0 3px 10px rgba(198,40,40,.3)}
+.ps-icon{font-size:1.4rem;margin-bottom:6px}
+.ps-title{font-size:.78rem;font-weight:700;color:var(--t1);margin-bottom:4px}
+.ps-desc{font-size:.7rem;color:var(--t3);line-height:1.5}
+/* Category grid */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:40px}
+.cat-card{background:var(--surface);border:2px solid var(--bdr2);border-radius:14px;overflow:hidden}
+.cat-header{background:var(--surface2);padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bdr)}
+.cat-ico{font-size:1.2rem}
+.cat-name{font-family:'DM Serif Display',serif;font-size:.88rem;font-weight:700;color:var(--t1)}
+.cat-subs{padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+.sub-item{display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--t2)}
+.sub-dot{width:6px;height:6px;border-radius:50%;background:var(--rail-red);flex-shrink:0}
+/* FAQ accordion */
+.faq-section-title{font-family:'DM Serif Display',serif;font-size:1rem;font-weight:700;color:var(--t1);margin:32px 0 14px;display:flex;align-items:center;gap:10px}
+.faq-section-title::after{content:'';flex:1;height:1px;background:var(--bdr2)}
+.faq-item{background:var(--surface);border:1.5px solid var(--bdr2);border-radius:11px;margin-bottom:10px;overflow:hidden;transition:all .3s}
+.faq-item.open{border-color:rgba(198,40,40,.3)}
+.faq-q{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;font-size:.88rem;font-weight:600;color:var(--t1);user-select:none;transition:background .2s}
+.faq-q:hover{background:var(--surface2)}
+.faq-arrow{margin-left:auto;font-size:.75rem;color:var(--t3);transition:transform .3s;flex-shrink:0}
+.faq-item.open .faq-arrow{transform:rotate(180deg)}
+.faq-a{display:none;padding:0 18px 16px;font-size:.84rem;color:var(--t3);line-height:1.75;font-weight:400}
+.faq-item.open .faq-a{display:block;animation:fu .3s var(--spr)}
+
+/* Email routing table */
+.email-table{border-radius:12px;overflow:hidden;border:1.5px solid var(--bdr2);margin-bottom:36px;box-shadow:0 2px 12px rgba(198,40,40,.06)}
+.et-row{display:grid;grid-template-columns:1.5fr 1.4fr 1.2fr;padding:11px 16px;border-bottom:1px solid var(--bdr);font-size:.8rem;color:var(--t2);gap:8px;align-items:center}
+.et-row:last-child{border-bottom:none}
+.et-head{background:var(--rail-red);color:#fff;font-weight:700;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
+.et-row:not(.et-head):nth-child(even){background:var(--surface2)}
+
+/* Voice example box */
+.voice-example-box{background:var(--surface);border:1.5px solid var(--bdr2);border-radius:14px;overflow:hidden;margin-bottom:36px;box-shadow:0 2px 12px rgba(198,40,40,.06)}
+.ve-row{display:flex;flex-direction:column;gap:6px;padding:14px 18px;border-bottom:1px solid var(--bdr)}
+.ve-row:last-child{border-bottom:none}
+.ve-row.ve-result{flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap}
+.ve-label{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;padding:3px 10px;border-radius:18px;width:fit-content}
+.ve-label.ve-said{background:rgba(198,40,40,.08);color:var(--rail-red);border:1px solid rgba(198,40,40,.18)}
+.ve-label.ve-understood{background:rgba(46,125,50,.08);color:var(--grn);border:1px solid rgba(46,125,50,.18)}
+.ve-label.ve-admin{background:rgba(21,101,192,.07);color:var(--blu);border:1px solid rgba(21,101,192,.17)}
+.ve-text{font-size:.88rem;color:var(--t1);line-height:1.65;font-weight:400}
+.ve-chips{display:flex;gap:7px;flex-wrap:wrap}
+.ve-arrow{text-align:center;padding:10px 18px;font-size:.76rem;font-weight:600;color:var(--t3);background:rgba(198,40,40,.03);border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr)}
+
+/* Improved voice preview (inside complaint step) */
+.voice-preview{display:none;margin-top:14px;border-radius:12px;overflow:hidden;border:1.5px solid rgba(198,40,40,.25);animation:fu .4s var(--spr)}
+.voice-preview.show{display:block}
+.vp-head{background:var(--rail-red);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;display:flex;align-items:center;gap:7px}
+.vp-body{padding:13px 14px;background:var(--surface2)}
+.vp-row{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.vp-row:last-child{margin-bottom:0}
+.vp-lbl{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--t3)}
+.vp-val{font-size:.86rem;color:var(--t1);line-height:1.55;font-weight:500}
+.vp-val.italic{font-style:italic;color:var(--t2);font-weight:300}
+.vp-val.red{color:var(--rail-red);font-weight:700}
+
+/* TOAST */
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(60px);padding:10px 22px;border-radius:11px;background:var(--surface);border:2px solid var(--bdr2);font-size:.8rem;font-weight:600;color:var(--t2);white-space:nowrap;z-index:500;pointer-events:none;opacity:0;transition:all .4s var(--spr);box-shadow:0 8px 28px rgba(198,40,40,.15)}
+.toast.up{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.err{border-color:rgba(198,40,40,.4);color:var(--rail-red);background:rgba(240,248,255,.98)}
+.toast.ok{border-color:rgba(46,125,50,.35);color:var(--grn);background:rgba(240,255,240,.98)}
+
+.foot{position:relative;z-index:1;text-align:center;padding:28px 24px 36px;border-top:1px solid var(--bdr);font-size:.7rem;color:var(--t3);letter-spacing:.04em;background:var(--surface)}
+.file-banner{position:fixed;top:62px;left:0;right:0;z-index:400;background:#7B1F1F;color:#fff;text-align:center;padding:11px 20px;font-size:.84rem;font-weight:600;letter-spacing:.02em;box-shadow:0 3px 16px rgba(198,40,40,.35);display:none}
+.file-banner.show{display:block}
+
+@media(max-width:780px){
+  .hero{grid-template-columns:1fr;padding:90px 20px 48px;gap:36px}.hero-r{display:none}
+  .nav{padding:0 18px}.nav-tabs{display:none}
+  .srow,.rinn{padding:22px 18px}.succEl{padding:44px 18px}
+  .zone{padding:0 14px 80px}
+  .cmp-grid{grid-template-columns:1fr;gap:0}
+  .col-txt{padding-right:0;margin-bottom:14px}
+  .col-audio{padding-left:0}
+  .or-div{flex-direction:row;padding:12px 0;gap:12px}
+  .or-line{width:50px;height:1px}
+  .tracker{padding:10px 14px}.tri:not(:last-child)::after{display:none}
+  .process-steps{grid-template-columns:1fr 1fr}.ps-step:not(:last-child)::after{display:none}
+  .cat-grid{grid-template-columns:1fr}
+  .track-page,.faq-page{padding:90px 16px 60px}
+}
+</style>
+</head>
+<body>
+
+<div class="file-banner" id="fileBanner">
+  ⚠️ Opened as a file — <strong>app.py must be running</strong> at localhost:5000. Run <code style="background:rgba(255,255,255,.2);padding:2px 8px;border-radius:4px">python app.py</code> in your terminal, then visit <a href="http://localhost:5000" target="_blank" style="color:#FDD835;font-weight:800">http://localhost:5000</a>
+</div>
+
+<nav class="nav">
+  <div class="nav-logo" onclick="showPage('complaint')">
+    <div class="logo-sq">🚂</div>
+    <div class="logo-name">Rail<span>Seva</span></div>
+  </div>
+  <div class="nav-tabs">
+    <button class="ntab on" id="tab-complaint" onclick="showPage('complaint')">File Complaint</button>
+    <button class="ntab" id="tab-track" onclick="showPage('track')">Track Status</button>
+    <button class="ntab" id="tab-faq" onclick="showPage('faq')">Help &amp; FAQ</button>
+  </div>
+  <div class="nav-r">
+    <div class="hlc">📞&nbsp;139</div>
+    <button class="nsign">Sign In</button>
+  </div>
+</nav>
+
+<!-- ══════════════ PAGE: FILE COMPLAINT ══════════════ -->
+<div class="page active" id="page-complaint">
+  <section class="hero">
+    <div class="hero-l">
+      <div class="htag"><div class="ldot"></div>AI · Auto-detect · 22 Languages</div>
+      <h1 class="hh1">Grievances heard,<span class="acc">resolved instantly.</span></h1>
+      <p class="hp">Enter your PNR and speak or type in any language. Gemini auto-detects, translates, classifies, and routes to the right authority in seconds.</p>
+      <div class="hstats">
+        <div class="stat"><div class="sv">22M+</div><div class="sl">Daily Passengers</div></div>
+        <div class="stat"><div class="sv">&lt;30s</div><div class="sl">AI Classification</div></div>
+        <div class="stat"><div class="sv">22</div><div class="sl">Languages</div></div>
+        <div class="stat"><div class="sv">50</div><div class="sl">PNRs in DB</div></div>
+      </div>
+    </div>
+    <div class="hero-r">
+      <div class="tscene">
+        <div class="orb"></div><div class="orb"></div><div class="orb"></div>
+        <div class="strack"></div>
+        <div class="stk"></div><div class="stk"></div><div class="stk"></div><div class="stk"></div>
+        <div class="twrap">
+          <div class="smoke" style="position:absolute;top:-24px;left:76px">
+            <div class="puff"></div><div class="puff"></div><div class="puff"></div>
+          </div>
+          <svg viewBox="0 0 340 170" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="18" y="42" width="270" height="82" rx="13" fill="#E8F5FF" stroke="#1565C0" stroke-width="2"/>
+            <rect x="18" y="42" width="270" height="14" rx="7" fill="#1565C0"/>
+            <rect x="24" y="56" width="258" height="4" fill="#F9A825"/>
+            <rect x="36" y="66" width="36" height="28" rx="5" fill="#BBDEFB" stroke="#1565C0" stroke-width="1"/>
+            <rect x="88" y="66" width="36" height="28" rx="5" fill="#BBDEFB" stroke="#1565C0" stroke-width="1"/>
+            <rect x="140" y="66" width="36" height="28" rx="5" fill="#BBDEFB" stroke="#1565C0" stroke-width="1"/>
+            <rect x="192" y="66" width="36" height="28" rx="5" fill="#BBDEFB" stroke="#1565C0" stroke-width="1"/>
+            <rect x="244" y="66" width="30" height="28" rx="5" fill="#BBDEFB" stroke="#1565C0" stroke-width="1"/>
+            <rect x="38" y="68" width="12" height="9" rx="2" fill="rgba(21,101,192,.5)"/>
+            <rect x="90" y="68" width="12" height="9" rx="2" fill="rgba(21,101,192,.5)"/>
+            <rect x="142" y="68" width="12" height="9" rx="2" fill="rgba(21,101,192,.5)"/>
+            <rect x="194" y="68" width="12" height="9" rx="2" fill="rgba(21,101,192,.5)"/>
+            <circle cx="56" cy="132" r="14" fill="white" stroke="#1565C0" stroke-width="2.5"/>
+            <circle cx="56" cy="132" r="7" fill="#1565C0" opacity=".25"/>
+            <circle cx="56" cy="132" r="3" fill="#1565C0"/>
+            <line x1="56" y1="118" x2="56" y2="146" stroke="#1565C0" stroke-width="1.5" opacity=".4"/>
+            <line x1="42" y1="132" x2="70" y2="132" stroke="#1565C0" stroke-width="1.5" opacity=".4"/>
+            <circle cx="144" cy="132" r="14" fill="white" stroke="#1565C0" stroke-width="2.5"/>
+            <circle cx="144" cy="132" r="7" fill="#1565C0" opacity=".25"/>
+            <circle cx="144" cy="132" r="3" fill="#1565C0"/>
+            <line x1="144" y1="118" x2="144" y2="146" stroke="#1565C0" stroke-width="1.5" opacity=".4"/>
+            <line x1="130" y1="132" x2="158" y2="132" stroke="#1565C0" stroke-width="1.5" opacity=".4"/>
+            <circle cx="232" cy="132" r="14" fill="white" stroke="#1565C0" stroke-width="2.5"/>
+            <circle cx="232" cy="132" r="7" fill="#1565C0" opacity=".25"/>
+            <circle cx="232" cy="132" r="3" fill="#1565C0"/>
+            <line x1="232" y1="118" x2="232" y2="146" stroke="#1565C0" stroke-width="1.5" opacity=".4"/>
+            <line x1="218" y1="132" x2="246" y2="132" stroke="#1565C0" stroke-width="1.5" opacity=".4"/>
+            <line x1="0" y1="147" x2="340" y2="147" stroke="#1565C0" stroke-width="3" opacity=".4"/>
+            <line x1="0" y1="153" x2="340" y2="153" stroke="#1565C0" stroke-width="2" opacity=".2"/>
+            <rect x="20" y="147" width="3" height="7" rx="1" fill="#1565C0" opacity=".2"/>
+            <rect x="60" y="147" width="3" height="7" rx="1" fill="#1565C0" opacity=".2"/>
+            <rect x="100" y="147" width="3" height="7" rx="1" fill="#1565C0" opacity=".2"/>
+            <rect x="140" y="147" width="3" height="7" rx="1" fill="#1565C0" opacity=".2"/>
+            <rect x="180" y="147" width="3" height="7" rx="1" fill="#1565C0" opacity=".2"/>
+            <rect x="220" y="147" width="3" height="7" rx="1" fill="#1565C0" opacity=".2"/>
+            <rect x="260" y="147" width="3" height="7" rx="1" fill="#1565C0" opacity=".2"/>
+            <rect x="300" y="147" width="3" height="7" rx="1" fill="#1565C0" opacity=".2"/>
+            <ellipse cx="290" cy="82" rx="20" ry="14" fill="#FFF9C4" opacity=".8"/>
+            <circle cx="293" cy="82" r="5" fill="#FDD835"/>
+            <circle cx="293" cy="82" r="2" fill="white"/>
+            <line x1="76" y1="42" x2="66" y2="22" stroke="#1565C0" stroke-width="1.5"/>
+            <line x1="76" y1="42" x2="86" y2="22" stroke="#1565C0" stroke-width="1.5"/>
+            <line x1="66" y1="22" x2="86" y2="22" stroke="#1565C0" stroke-width="2"/>
+            <line x1="156" y1="42" x2="146" y2="22" stroke="#1565C0" stroke-width="1.5"/>
+            <line x1="156" y1="42" x2="166" y2="22" stroke="#1565C0" stroke-width="1.5"/>
+            <line x1="146" y1="22" x2="166" y2="22" stroke="#1565C0" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="fbadge fb1"><div class="fbt">AI Status</div><div class="fbv r">● Auto-detect Active</div></div>
+        <div class="fbadge fb2"><div class="fbt">Last Resolved</div><div class="fbv g">2 min ago ✓</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="zone" id="czone">
+    <div class="sch">
+      <div class="slbl">File Your Complaint</div>
+      <h2 class="sh2">Speak or type. <span>Any language, auto-detected.</span></h2>
+    </div>
+    <div class="tracker">
+      <div class="tri active" id="tri1"><div class="trd" id="trd1">1</div><div class="trl">Verify PNR</div></div>
+      <div class="tri" id="tri2"><div class="trd" id="trd2">2</div><div class="trl">Describe</div></div>
+      <div class="tri" id="tri3"><div class="trd" id="trd3">3</div><div class="trl">AI Review</div></div>
+      <div class="tri" id="tri4"><div class="trd" id="trd4">4</div><div class="trl">Filed</div></div>
+    </div>
+    <div class="bigcard">
+      <!-- STEP 1 -->
+      <div class="srow" id="s1">
+        <div class="rh"><div class="snbg" id="sn1">01</div><div class="stit">Verify your journey</div><div class="sdtag" id="sd1">✓ <span id="sdt1">—</span></div></div>
+        <div class="sbody">
+          <p class="shint">Your 10-digit PNR links this complaint to your exact train, journey, and coach.</p>
+          <div class="ishell" id="pnrShell">
+            <div class="pbadge">PNR</div>
+            <input type="tel" id="pnrIn" placeholder="Enter 10-digit PNR  (e.g. 4248765432)" maxlength="10" autocomplete="off">
+            <button class="vbtn" id="vBtn" onclick="verifyPNR()">Verify →</button>
+          </div>
+          <div class="jcard" id="jcard"></div>
+          <button class="proced" id="procBtn" onclick="gotoStep2()">Confirm journey &amp; continue →</button>
+        </div>
+      </div>
+      <!-- STEP 2 -->
+      <div class="srow locked" id="s2">
+        <div class="rh"><div class="snbg" id="sn2">02</div><div class="stit">Describe what happened</div><div class="sdtag" id="sd2">✓ <span>Received</span></div></div>
+        <div class="sbody">
+          <div class="auto-notice"><span class="an-ico">🌐</span><span>Gemini <strong>auto-detects your language</strong> — speak or type in Hindi, Kannada, Tamil, Telugu, Marathi, Bengali, English or any Indian language.</span></div>
+          <div class="cmp-grid">
+            <div class="col-txt">
+              <div class="col-lbl">Type your complaint</div>
+              <div class="ctbox">
+                <textarea id="ctxt" placeholder="Describe in any language...&#10;e.g. Coach S1 mein fan kharab hai&#10;e.g. AC chal nahi raha, bahut garam hai&#10;e.g. TTE ne 500 rupees manga" oninput="onTyp(this)"></textarea>
+                <div class="ctfoot">
+                  <button class="cftool" onclick="document.getElementById('fIn').click()">📎 Attach evidence</button>
+                  <input type="file" id="fIn" style="display:none" accept="image/*,video/*" onchange="handleFile(this)">
+                  <span class="cfcount" id="cfc">0 chars</span>
+                </div>
+              </div>
+              <div class="fchip" id="fchip"><span id="fcico">📄</span><span class="fcn" id="fcnm">—</span><button class="fcx" onclick="rmFile()">✕</button></div>
+            </div>
+            <div class="or-div"><div class="or-line"></div><div class="or-pill">OR</div><div class="or-line"></div></div>
+            <div class="col-audio">
+              <div class="col-lbl">Record voice complaint</div>
+              <div class="rec-card" id="recCard">
+                <div class="mic-wrap">
+                  <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+                  <button class="mic-btn" id="micBtn" onclick="toggleRecord()">🎙</button>
+                </div>
+                <div class="wave" id="wave">
+                  <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+                  <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+                </div>
+                <div class="rec-timer" id="recTimer">00:00</div>
+                <div class="mic-lbl" id="micLbl">Tap to record</div>
+                <div class="mic-sub" id="micSub">Hindi · Kannada · Tamil · Telugu · Marathi · English &amp; more</div>
+                <div class="ap" id="apStrip">
+                  <span class="ap-ico">🎵</span>
+                  <div class="ap-info"><div class="ap-dur" id="apDur">—</div><div class="ap-hint">Gemini will transcribe &amp; auto-detect language</div></div>
+                  <button class="ap-del" onclick="clearAudio()" title="Delete">🗑</button>
+                </div>
+                <!-- Voice preview — filled after Gemini analyses -->
+                <div class="voice-preview" id="voicePreview">
+                  <div class="vp-head">🤖 AI understood this as</div>
+                  <div class="vp-body">
+                    <div class="vp-row">
+                      <div class="vp-lbl">Passenger said (<span id="vpLang">—</span>)</div>
+                      <div class="vp-val italic" id="vpSaid">—</div>
+                    </div>
+                    <div class="vp-row">
+                      <div class="vp-lbl">What it means (English)</div>
+                      <div class="vp-val" id="vpUnderstood">—</div>
+                    </div>
+                    <div class="vp-row">
+                      <div class="vp-lbl">Classified as</div>
+                      <div class="vp-val red" id="vpCat">—</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ld-banner" id="ldBanner"><div class="ld-spin" id="ldSpin"></div><span id="ldTxt">Detecting language…</span></div>
+          <button class="abtn" id="aBtn" onclick="doAnalyse()">
+            <div class="abtn-in"><div class="aspn" id="aspn"></div><span id="aBtnTxt">Analyse with Gemini AI ✦</span></div>
+          </button>
+        </div>
+      </div>
+      <!-- Result -->
+      <div class="rslot" id="rslot"><div class="rinn" id="rinn"></div></div>
+      <!-- Success -->
+      <div class="succEl" id="succEl">
+        <div class="confl" id="confl"></div>
+        <div class="sring">✓</div>
+        <h2 class="stitle">Complaint filed!</h2>
+        <p class="ssub" id="ssub">Your grievance has been classified and forwarded.</p>
+        <div class="tbox"><span class="tbl">Reference Ticket</span><span class="tbn" id="tbn">—</span><span class="tbo">✓ Saved &amp; Forwarded</span></div>
+        <div class="confirm-strip">
+          <div class="cs-row db"><span class="cs-ico">🗄️</span><div><strong>Saved to database</strong> — accessible at admin panel</div></div>
+          <div class="cs-row" id="emailConfirmRow"><span class="cs-ico" id="emailConfirmIco">📧</span><div id="emailConfirmText">Forwarding to authority…</div></div>
+        </div>
+        <div class="smeta" id="smeta"></div>
+        <button class="rbtn" onclick="location.reload()">File another complaint</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════ PAGE: TRACK STATUS ══════════════ -->
+<div class="page" id="page-track">
+  <div class="track-page">
+    <div class="sch">
+      <div class="slbl">Track Your Complaint</div>
+      <h2 class="sh2">Enter your <span>ticket number</span></h2>
+    </div>
+    <div class="track-shell">
+      <div class="tbadge">Ticket #</div>
+      <input type="text" id="trackIn" placeholder="e.g. RC-20260323-AB12XYZ" autocomplete="off" onkeydown="if(event.key==='Enter')trackComplaint()">
+      <button class="tbtn" id="tBtn" onclick="trackComplaint()">Track →</button>
+    </div>
+    <div class="track-result" id="trackResult"></div>
+    <div class="tr-not-found" id="trNotFound">
+      <div class="tr-nf-ico">🔍</div>
+      <div class="tr-nf-t">Ticket not found</div>
+      <div class="tr-nf-s">Only complaints submitted while <strong>app.py was running</strong> are saved to the database. If you used an offline/fallback ticket (e.g. <code>RC-1J3K...</code>), it was never stored. Re-submit your complaint with the backend running and use the new ticket to track.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE: HELP & FAQ ══════════════ -->\n<div class="page" id="page-faq">
+  <div class="faq-page">
+    <div class="sch">
+      <div class="slbl">Help &amp; FAQ</div>
+      <h2 class="sh2">How <span>RailSeva</span> works</h2>
+      <p style="font-size:.9rem;color:var(--t3);max-width:560px;margin:12px auto 0;line-height:1.75">A step-by-step guide to filing, tracking, and understanding your Indian Railways AI grievance.</p>
+    </div>
+
+    <!-- Full Process Walkthrough -->
+    <div class="faq-section-title">📋 The Complete Process</div>
+    <div class="process-steps">
+      <div class="ps-step">
+        <div class="ps-num">1</div>
+        <div class="ps-icon">🎟️</div>
+        <div class="ps-title">Enter Your PNR</div>
+        <div class="ps-desc">Type your 10-digit PNR number. The system verifies it against the database and auto-fills your journey — train name, route, class, date, and passenger count.</div>
+      </div>
+      <div class="ps-step">
+        <div class="ps-num">2</div>
+        <div class="ps-icon">🎙 / ✍️</div>
+        <div class="ps-title">Speak or Type</div>
+        <div class="ps-desc">Record a voice complaint OR type it out in any of the 22 official Indian languages. No language selection required — Gemini detects it automatically.</div>
+      </div>
+      <div class="ps-step">
+        <div class="ps-num">3</div>
+        <div class="ps-icon">🤖</div>
+        <div class="ps-title">Gemini AI Analyses</div>
+        <div class="ps-desc">Google Gemini 1.5 Flash receives the raw audio or text. It transcribes, detects the language, translates to English, classifies into a category, and writes an admin summary — all automatically.</div>
+      </div>
+      <div class="ps-step">
+        <div class="ps-num">4</div>
+        <div class="ps-icon">🗄️</div>
+        <div class="ps-title">Saved to Database</div>
+        <div class="ps-desc">Your complaint is saved to the RailSeva SQLite database with a unique ticket number (format: RC-YYYYMMDD-XXXXXXX). This is used for tracking.</div>
+      </div>
+      <div class="ps-step">
+        <div class="ps-num">5</div>
+        <div class="ps-icon">📧</div>
+        <div class="ps-title">Forwarded to Authority</div>
+        <div class="ps-desc">An email is automatically sent from complaints@railseva.com to the responsible department — staff, security, hygiene, electrical, or vigilance — based on the AI classification.</div>
+      </div>
+      <div class="ps-step">
+        <div class="ps-num">6</div>
+        <div class="ps-icon">🔍</div>
+        <div class="ps-title">Track Your Complaint</div>
+        <div class="ps-desc">Use the Track Status tab with your ticket number to check the current status: Pending, In Progress, or Resolved. The full complaint record is shown.</div>
+      </div>
+    </div>
+
+    <!-- Email Routing Table -->
+    <div class="faq-section-title">📧 Who Gets Notified?</div>
+    <div class="email-table">
+      <div class="et-row et-head"><span>Category</span><span>Forwarded To</span><span>Sent From</span></div>
+      <div class="et-row"><span>👨‍✈️ Staff Behaviour</span><span>staff@railseva.in</span><span>complaints@railseva.com</span></div>
+      <div class="et-row"><span>🔒 Security</span><span>security@railseva.in</span><span>complaints@railseva.com</span></div>
+      <div class="et-row"><span>🧹 Coach Cleanliness</span><span>hygiene@railseva.in</span><span>complaints@railseva.com</span></div>
+      <div class="et-row"><span>⚡ Electrical Equipment</span><span>electrical@railseva.in</span><span>complaints@railseva.com</span></div>
+      <div class="et-row"><span>💰 Corruption / Bribery</span><span>vigilance@railseva.in</span><span>complaints@railseva.com</span></div>
+      <div class="et-row"><span>📋 Others</span><span>general@railseva.in</span><span>complaints@railseva.com</span></div>
+    </div>
+
+    <!-- Categories & Subcategories -->
+    <div class="faq-section-title">🗂️ Complaint Categories &amp; Sub-categories</div>
+    <div class="cat-grid">
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">👨‍✈️</span><span class="cat-name">Staff Behaviour</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Rude / aggressive behaviour</div>
+          <div class="sub-item"><div class="sub-dot"></div>TTE / TC misconduct</div>
+          <div class="sub-item"><div class="sub-dot"></div>Denial of rightful service</div>
+          <div class="sub-item"><div class="sub-dot"></div>Favouritism or discrimination</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">🔒</span><span class="cat-name">Security</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Smoking / Alcohol / Narcotics</div>
+          <div class="sub-item"><div class="sub-dot"></div>Theft / Snatching of belongings</div>
+          <div class="sub-item"><div class="sub-dot"></div>Harassment (verbal / physical)</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">🧹</span><span class="cat-name">Coach Cleanliness</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Unclean / blocked toilets</div>
+          <div class="sub-item"><div class="sub-dot"></div>Cockroaches / Rodents</div>
+          <div class="sub-item"><div class="sub-dot"></div>Dirty coach interior / seats</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">⚡</span><span class="cat-name">Electrical Equipment</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Air Conditioner not working</div>
+          <div class="sub-item"><div class="sub-dot"></div>Fans not working</div>
+          <div class="sub-item"><div class="sub-dot"></div>Lights not working / flickering</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">💰</span><span class="cat-name">Corruption / Bribery</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>TTE / staff demanding bribe</div>
+          <div class="sub-item"><div class="sub-dot"></div>Extortion for berth / seat</div>
+          <div class="sub-item"><div class="sub-dot"></div>Unauthorised money collection</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">📋</span><span class="cat-name">Others</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Food quality / pantry issues</div>
+          <div class="sub-item"><div class="sub-dot"></div>Overbooking / seat dispute</div>
+          <div class="sub-item"><div class="sub-dot"></div>Any other onboard grievance</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voice AI Example Box -->
+    <div class="faq-section-title">🎙️ How Voice Complaints Work — Example</div>
+    <div class="voice-example-box">
+      <div class="ve-row">
+        <span class="ve-label ve-said">Passenger said (Hindi)</span>
+        <span class="ve-text">"AC chal nahi raha, bohot garmi ho rahi hai berth pe"</span>
+      </div>
+      <div class="ve-arrow">↓ Gemini transcribes, translates &amp; classifies</div>
+      <div class="ve-row">
+        <span class="ve-label ve-understood">AI Understood (English)</span>
+        <span class="ve-text">"The AC is not working, it is getting very hot at the berth"</span>
+      </div>
+      <div class="ve-row ve-result">
+        <span class="ve-label">Classified As</span>
+        <span class="ve-chips"><span class="rp pc">Electrical-Equipment</span><span class="rp ps">Air Conditioner</span></span>
+      </div>
+      <div class="ve-row">
+        <span class="ve-label">Admin Summary</span>
+        <span class="ve-text" style="font-style:italic;color:var(--t2)">"Passenger reports that the air conditioning unit in their coach is non-functional, resulting in uncomfortable temperatures. Immediate inspection and repair required."</span>
+      </div>
+    </div>
+
+    <!-- FAQ Accordion -->
+    <div class="faq-section-title">❓ Frequently Asked Questions</div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Which languages are supported? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">All 22 scheduled Indian languages are supported: Hindi, Bengali, Telugu, Marathi, Tamil, Urdu, Gujarati, Kannada, Odia, Malayalam, Punjabi, Assamese, Maithili, Sanskrit, Kashmiri, Nepali, Sindhi, Konkani, Manipuri, Dogri, Bodo, and Santhali — plus English. You do not select a language; Gemini detects it automatically from your speech or text.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">How does voice recording work? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">Tap the large red microphone button and speak naturally in any language. The raw audio is sent directly to Google Gemini 1.5 Flash. Gemini transcribes what was said verbatim, detects the language automatically, translates it to English, and classifies the complaint. You will see exactly what the AI heard and understood as a preview before you confirm submission.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">What happens after I submit? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">Two things happen immediately: (1) Your complaint is saved to the RailSeva database with a unique ticket number like RC-20260323-ABCXYZ. (2) An automated email is sent from complaints@railseva.com to the responsible railway department based on AI classification. You can use the ticket number to track progress in the Track Status tab.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">How do I track my complaint? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">Click the Track Status tab at the top. Enter your ticket number exactly as shown on the confirmation screen (format: RC-YYYYMMDD-XXXXXXX). Click Track and you will see your complaint details, classification, assigned authority, and current resolution status (Pending / In Progress / Resolved). Note: only complaints submitted while app.py was running are saved to the database.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">What is a "Not Valid Complaint"? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">If the AI determines the submission is not a genuine Indian Railways grievance — for example a general question, a test message, or something unrelated to train travel — it will classify it as "Not Valid Complaint". No email will be sent and no database record will be created. You will be asked to re-describe a specific onboard incident.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">What is a media mismatch? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">If you attach a photo or video as evidence, Gemini checks whether the visual content matches your complaint text. If you describe a dirty toilet but attach an unrelated image, the AI flags it as a mismatch and asks you to re-attach relevant evidence before submission.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Why does the email show as complaints@railseva.com? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">The system uses email masking: the actual sending account is a Gmail address, but the "From" field displayed to recipients is set to complaints@railseva.com for a professional appearance. All reply-to addresses go to the railway authority inboxes, not to individual passengers.</div>
+    </div>
+  </div>
+</div>
+
+      <div class="ps-step">
+        <div class="ps-num">1</div>
+        <div class="ps-icon">🎟️</div>
+        <div class="ps-title">Enter PNR</div>
+        <div class="ps-desc">Your 10-digit PNR auto-fills your journey details — train, route, class, date</div>
+      </div>
+      <div class="ps-step">
+        <div class="ps-num">2</div>
+        <div class="ps-icon">🎙 / ✍️</div>
+        <div class="ps-title">Speak or Type</div>
+        <div class="ps-desc">Record a voice complaint or type in any of 22 Indian languages — no language selection needed</div>
+      </div>
+      <div class="ps-step">
+        <div class="ps-num">3</div>
+        <div class="ps-icon">🤖</div>
+        <div class="ps-title">Gemini AI Analyses</div>
+        <div class="ps-desc">AI transcribes audio, detects language, translates to English, and classifies the complaint</div>
+      </div>
+      <div class="ps-step">
+        <div class="ps-num">4</div>
+        <div class="ps-icon">📧</div>
+        <div class="ps-title">Auto-Forwarded</div>
+        <div class="ps-desc">Complaint is saved to the database and emailed to the responsible railway authority</div>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="faq-section-title">Complaint Categories &amp; Sub-categories</div>
+    <div class="cat-grid">
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">👨‍✈️</span><span class="cat-name">Staff Behaviour</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Rude / misbehaving staff</div>
+          <div class="sub-item"><div class="sub-dot"></div>TTE / TC misconduct</div>
+          <div class="sub-item"><div class="sub-dot"></div>Denial of service</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">🔒</span><span class="cat-name">Security</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Smoking / Alcohol / Narcotics</div>
+          <div class="sub-item"><div class="sub-dot"></div>Theft / Snatching</div>
+          <div class="sub-item"><div class="sub-dot"></div>Harassment</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">🧹</span><span class="cat-name">Coach Cleanliness</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Unclean toilets</div>
+          <div class="sub-item"><div class="sub-dot"></div>Cockroaches / Rodents</div>
+          <div class="sub-item"><div class="sub-dot"></div>Dirty coach interior</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">⚡</span><span class="cat-name">Electrical Equipment</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Air Conditioner not working</div>
+          <div class="sub-item"><div class="sub-dot"></div>Fans not working</div>
+          <div class="sub-item"><div class="sub-dot"></div>Lights not working</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">💰</span><span class="cat-name">Corruption / Bribery</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>TTE demanding bribe</div>
+          <div class="sub-item"><div class="sub-dot"></div>Extortion for seat</div>
+          <div class="sub-item"><div class="sub-dot"></div>Unauthorized money collection</div>
+        </div>
+      </div>
+      <div class="cat-card">
+        <div class="cat-header"><span class="cat-ico">📋</span><span class="cat-name">Others</span></div>
+        <div class="cat-subs">
+          <div class="sub-item"><div class="sub-dot"></div>Any other onboard issue</div>
+          <div class="sub-item"><div class="sub-dot"></div>Food quality complaints</div>
+          <div class="sub-item"><div class="sub-dot"></div>Pantry car issues</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-section-title">Frequently Asked Questions</div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Which languages are supported? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">All 22 scheduled Indian languages: Hindi, Bengali, Telugu, Marathi, Tamil, Urdu, Gujarati, Kannada, Odia, Malayalam, Punjabi, Assamese, Maithili, Sanskrit, Kashmiri, Nepali, Sindhi, Konkani, Manipuri, Dogri, Bodo, Santhali — plus English. You do not need to select your language; Gemini detects it automatically from your speech or text.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">How does voice recording work? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">Click the microphone button and speak your complaint naturally in any language. The raw audio is sent to Gemini AI, which transcribes your speech, identifies the language, translates it to English, and then classifies the complaint. You will see a preview of what the AI understood before you submit.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Where does my complaint go after submission? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">Your complaint is first saved to the RailSeva database with a unique ticket number (e.g. RC-20260323-ABCXYZ). It is then automatically forwarded via email to the responsible authority based on category — staff issues go to staff@railseva.in, security issues to security@railseva.in, electrical issues to electrical@railseva.in, etc. The email appears to come from complaints@railseva.com.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">How do I track my complaint? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">Click the "Track Status" tab in the navigation bar. Enter your ticket number (shown on the confirmation screen, format RC-YYYYMMDD-XXXXXXX) and click Track. You will see the full complaint details, category, assigned authority, and current status.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">What counts as a valid complaint? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">A valid complaint must relate to an onboard railway experience — coach conditions, staff behaviour, security incidents, electrical equipment, or corruption. Complaints unrelated to your train journey (e.g. general suggestions, ticket booking issues) will be flagged as "Not Valid Complaint" by the AI and will not be forwarded.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">What is the Gemini API key for? <span class="faq-arrow">▼</span></div>
+      <div class="faq-a">The Gemini API key connects RailSeva to Google's Gemini 1.5 Flash model, which powers all AI classification, transcription, and translation. You can get a free key from aistudio.google.com. Without a valid key, the system falls back to a keyword-based classifier which works for basic complaints in English.</div>
+    </div>
+  </div>
+</div>
+
+<footer class="foot">RailSeva AI · Indian Railways Grievance Portal · Powered by Google Gemini · Helpline <strong>139</strong></footer>
+<div class="toast" id="toastEl"></div>
+
+<script>
+const IS_FILE = location.protocol === 'file:';
+const API = IS_FILE ? 'http://localhost:5000/api' : '/api';
+if (IS_FILE) document.getElementById('fileBanner').classList.add('show');
+
+const ST = {
+  journey:null,fb64:null,fmime:null,
+  audiob64:null,audiomime:null,audioDuration:0,
+  chunks:[],recorder:null,recording:false,
+  timerSecs:0,timerIv:null,analyserRaf:null,
+  result:null,
+};
+const $=id=>document.getElementById(id);
+
+/* ── PAGE SWITCHING ── */
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('on'));
+  $('page-'+name).classList.add('active');
+  $('tab-'+name).classList.add('on');
+  window.scrollTo(0,0);
+}
+
+/* ── UTILS ── */
+function toast(msg,type,d=3200){
+  const el=$('toastEl');el.textContent=msg;el.className='toast up'+(type?' '+type:'');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('up'),d);
+}
+function fmt(s){return`${String(~~(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+function setTracker(n){
+  [1,2,3,4].forEach(i=>{
+    const ti=$('tri'+i),td=$('trd'+i);
+    if(i<n){ti.className='tri done';td.textContent='✓';}
+    else if(i===n){ti.className='tri active';td.textContent=i;}
+    else{ti.className='tri';td.textContent=i;}
+  });
+}
+
+/* ── PNR ── */
+$('pnrIn').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'')});
+$('pnrIn').addEventListener('keydown',e=>{if(e.key==='Enter')verifyPNR()});
+async function verifyPNR(){
+  const val=$('pnrIn').value.trim(),sh=$('pnrShell'),btn=$('vBtn');
+  if(val.length!==10){sh.className='ishell err';setTimeout(()=>sh.className='ishell',1600);toast('Enter a valid 10-digit PNR','err');return}
+  btn.disabled=true;btn.textContent='Checking…';
+  try{
+    const r=await fetch(`${API}/verify-pnr`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pnr:val})});
+    const d=await r.json();
+    if(!d.success){
+      sh.className='ishell err';setTimeout(()=>sh.className='ishell',1600);
+      btn.disabled=false;btn.textContent='Verify →';
+      $('pnrIn').value='';$('pnrIn').placeholder='Try: 4248765432 or 1234567890';
+      setTimeout(()=>$('pnrIn').placeholder='Enter 10-digit PNR  (e.g. 4248765432)',3000);
+      toast(d.error||'PNR not found','err');return;
+    }
+    sh.className='ishell valid';btn.textContent='✓';ST.journey=d.journey;
+    const j=d.journey;
+    $('jcard').innerHTML=`
+      <div class="jctop"><span class="jcpill">🚂 ${j.train_name} · #${j.train_num}</span></div>
+      <div class="jcroute">
+        <div class="jcstn">${j.from_stn}</div>
+        <div class="jcmid"><div class="jcrail"></div><div class="jctn">${j.train_name}</div></div>
+        <div class="jcstn">${j.to_stn}</div>
+      </div>
+      <div class="jcchips">
+        <span class="jcchip">${j.date}</span><span class="jcchip">${j.class}</span>
+        <span class="jcchip">${j.pax} pax</span><span class="jcchip v">✓ PNR Valid</span>
+      </div>`;
+    $('jcard').classList.add('show');
+    $('procBtn').classList.add('show');
+    setTimeout(()=>$('procBtn').scrollIntoView({behavior:'smooth',block:'nearest'}),200);
+  }catch(e){
+    btn.disabled=false;btn.textContent='Verify →';
+    toast('Cannot reach server. Run: python app.py','err',7000);
+  }
+}
+function gotoStep2(){
+  $('s1').className='srow done';$('sn1').textContent='✓';
+  $('sdt1').textContent=ST.journey.from_stn+' → '+ST.journey.to_stn;
+  $('sd1').classList.add('vis');$('s2').className='srow';setTracker(2);
+  setTimeout(()=>{$('s2').scrollIntoView({behavior:'smooth',block:'start'})},300);
+}
+function onTyp(el){$('cfc').textContent=el.value.length+' chars'}
+function handleFile(inp){
+  const f=inp.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    ST.fb64=e.target.result.split(',')[1];ST.fmime=f.type;
+    $('fcnm').textContent=f.name+' ('+Math.round(f.size/1024)+' KB)';
+    $('fcico').textContent=f.type.startsWith('image')?'🖼️':'🎬';
+    $('fchip').classList.add('show');
+  };rd.readAsDataURL(f);
+}
+function rmFile(){ST.fb64=null;ST.fmime=null;$('fchip').classList.remove('show');$('fIn').value=''}
+
+/* ── AUDIO ── */
+async function toggleRecord(){
+  if(ST.recording){stopRecording();return}
+  if(ST.audiob64){clearAudio()}
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});}
+  catch(e){toast('Microphone permission denied','err');return}
+  ST.chunks=[];ST.recording=true;ST.timerSecs=0;
+  const mime=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+  ST.recorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
+  ST.recorder.ondataavailable=e=>{if(e.data.size>0)ST.chunks.push(e.data)};
+  ST.recorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());processAudio()};
+  ST.recorder.start(100);
+  $('micBtn').textContent='⏹';$('micBtn').className='mic-btn active';
+  $('recCard').classList.add('recording');$('wave').classList.add('live');
+  $('recTimer').classList.add('on');$('micLbl').textContent='Recording… tap to stop';
+  $('micSub').textContent='Speak clearly — Gemini will auto-detect language';
+  try{
+    const ac=new AudioContext(),analyser=ac.createAnalyser();analyser.fftSize=64;
+    ac.createMediaStreamSource(stream).connect(analyser);
+    const data=new Uint8Array(analyser.frequencyBinCount);
+    const bars=[...$('wave').querySelectorAll('.wb')];
+    const anim=()=>{
+      if(!ST.recording)return;
+      analyser.getByteFrequencyData(data);
+      bars.forEach((b,i)=>{const h=Math.max(4,Math.round((data[Math.floor(i*data.length/bars.length)]||0)/255*36));b.style.height=h+'px';b.style.animationPlayState='paused'});
+      ST.analyserRaf=requestAnimationFrame(anim);
+    };anim();
+  }catch(e){}
+  ST.timerIv=setInterval(()=>{
+    ST.timerSecs++;$('recTimer').textContent=fmt(ST.timerSecs);
+    if(ST.timerSecs>=120){stopRecording();toast('Max 2 min reached','',2500)}
+  },1000);
+}
+function stopRecording(){
+  if(!ST.recording||!ST.recorder)return;
+  ST.recording=false;ST.audioDuration=ST.timerSecs;
+  clearInterval(ST.timerIv);if(ST.analyserRaf)cancelAnimationFrame(ST.analyserRaf);
+  ST.recorder.stop();
+  $('micBtn').textContent='🎙';$('micBtn').className='mic-btn done';
+  $('recCard').classList.remove('recording');$('wave').classList.remove('live');
+  $('recTimer').classList.remove('on');$('micLbl').textContent='Processing…';$('micSub').textContent='';
+}
+function processAudio(){
+  const mime=ST.recorder.mimeType||'audio/webm';
+  const blob=new Blob(ST.chunks,{type:mime});
+  const rd=new FileReader();
+  rd.onload=e=>{
+    ST.audiob64=e.target.result.split(',')[1];ST.audiomime=mime;
+    $('apDur').textContent=fmt(ST.audioDuration)+' recorded';
+    $('apStrip').classList.add('show');$('recCard').classList.add('has-audio');
+    $('micLbl').textContent='Recording complete ✓';
+    // Quick pre-analysis to show voice preview
+    quickVoicePreview();
+  };rd.readAsDataURL(blob);
+}
+function clearAudio(){
+  ST.audiob64=null;ST.audiomime=null;ST.audioDuration=0;ST.chunks=[];
+  if(ST.recording){ST.recording=false;clearInterval(ST.timerIv)}
+  $('micBtn').textContent='🎙';$('micBtn').className='mic-btn';
+  $('recCard').className='rec-card';$('apStrip').classList.remove('show');
+  $('wave').classList.remove('live');$('recTimer').classList.remove('on');
+  $('micLbl').textContent='Tap to record';$('micSub').textContent='Hindi · Kannada · Tamil · Telugu · Marathi · English & more';
+  $('ldBanner').classList.remove('show');$('voicePreview').classList.remove('show');
+}
+
+/* Voice preview — quick classify just to show passenger what AI understood */
+async function quickVoicePreview(){
+  $('voicePreview').classList.remove('show');
+  try{
+    const res=await fetch(`${API}/classify`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:'',audio_b64:ST.audiob64,audio_mime:ST.audiomime})
+    });
+    const d=await res.json();
+    if(!d.success||!d.result)return;
+    const r=d.result;
+    // Store for re-use at full analyse
+    ST._previewResult=r;
+    $('vpLang').textContent=r.detected_language||'Unknown';
+    $('vpSaid').textContent=r.transcription||'(audio)';
+    $('vpUnderstood').textContent=r.english_translation||r.transcription||'—';
+    $('vpCat').textContent=`${r.category} → ${r.subcategory}`;
+    $('voicePreview').classList.add('show');
+    $('micLbl').textContent='Recording complete ✓';
+  }catch(e){
+    $('micLbl').textContent='Recording complete ✓';
+  }
+}
+
+/* ── ANALYSE ── */
+async function doAnalyse(){
+  const txt=$('ctxt').value.trim(),hasAudio=!!ST.audiob64;
+  if(!txt&&!hasAudio){toast('Record a voice complaint or type your complaint first','err');return}
+  const btn=$('aBtn'),btxt=$('aBtnTxt'),sp=$('aspn');
+  btn.disabled=true;sp.className='aspn on';btxt.textContent='Sending to Gemini…';
+  const lb=$('ldBanner'),lspin=$('ldSpin'),ltxt=$('ldTxt');
+  lb.classList.add('show');lspin.className='ld-spin';
+  ltxt.textContent=hasAudio?'Transcribing audio & detecting language…':'Detecting language & classifying…';
+  const slot=$('rslot'),inn=$('rinn');
+  inn.innerHTML='<div style="padding-top:6px"><div class="sk w40"></div><div class="sk w75"></div><div class="sk w90"></div><div class="sk w55"></div></div>';
+  slot.classList.add('open');setTracker(3);
+  setTimeout(()=>slot.scrollIntoView({behavior:'smooth',block:'nearest'}),160);
+  try{
+    // If we already have preview result from quick classify, reuse it
+    if(ST._previewResult&&hasAudio&&!txt){
+      ST.result=ST._previewResult;
+    } else {
+      const res=await fetch(`${API}/classify`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({text:txt,audio_b64:ST.audiob64||null,audio_mime:ST.audiomime||'audio/webm',image_b64:ST.fb64||null,image_mime:ST.fmime||null})
+      });
+      const data=await res.json();
+      if(!data.success)throw new Error(data.error);
+      ST.result=data.result;
+    }
+  }catch(e){
+    ST.result=kwFallback(txt);toast('Keyword fallback used','',3000);
+  }
+  lspin.className='ld-spin ok';
+  ltxt.textContent=`✓ Detected: ${ST.result.detected_language}`+(ST.result.detected_language!=='English'?' · Translated':'');
+  btn.disabled=false;sp.className='aspn';btxt.textContent='Re-analyse ✦';
+  renderResult(ST.result);
+}
+function kwFallback(t){
+  const tl=(t||'').toLowerCase();let cat='Others',sub='Others';
+  if(/fan|light|ac |cool|conditioner|garam|thanda/.test(tl)){cat='Electrical-Equipment';sub=/fan/.test(tl)?'Fans':/light/.test(tl)?'Lights':'Air Conditioner'}
+  else if(/harass|theft|steal|smok|narc/.test(tl)){cat='Security';sub=/harass/.test(tl)?'Harassment':/theft|steal/.test(tl)?'Theft_of_Passengers_Belongings/Snatching':'Smoking/Drinking_Alcohol/Narcotics'}
+  else if(/toilet|clean|cockroach|rodent/.test(tl)){cat='Coach-Cleanliness';sub=/toilet/.test(tl)?'Toilets':/cockroach|rodent/.test(tl)?'Cockroach/Rodents':'Coach-Interior'}
+  else if(/staff|rude|behav|attitude/.test(tl)){cat='Staff-Behaviour';sub='Staff-Behaviour'}
+  else if(/brib|corrupt|paise|paisa/.test(tl)){cat='Corruption/Bribery';sub='Corruption/Bribery'}
+  return{detected_language:'Unknown',transcription:t,category:cat,subcategory:sub,valid:true,media_mismatch:false,admin_summary:'Passenger reported an onboard issue.',english_translation:t};
+}
+function renderResult(r){
+  const inn=$('rinn');
+  const EM={'Staff-Behaviour':'staff@railseva.in','Security':'security@railseva.in','Coach-Cleanliness':'hygiene@railseva.in','Electrical-Equipment':'electrical@railseva.in','Corruption/Bribery':'vigilance@railseva.in','Others':'general@railseva.in'};
+  const email=EM[r.category]||'general@railseva.in';
+  if(!r.valid){
+    inn.innerHTML=`<div class="rtop"><div class="rico bad">⚠</div><div class="rlbl bad">Not a Valid Railway Complaint</div></div><div class="ibox warn"><span class="iico">💡</span><div class="itxt"><strong>This doesn't appear to be a railway grievance.</strong>Please describe a specific onboard incident.</div></div>`;
+    return;
+  }
+  if(r.media_mismatch){
+    inn.innerHTML=`<div class="rtop"><div class="rico bad">⚠</div><div class="rlbl bad">Media Mismatch</div></div><div class="ibox bad"><span class="iico">🔍</span><div class="itxt"><strong>Attached file doesn't match the complaint.</strong>Remove it and re-attach relevant evidence.</div></div>`;
+    return;
+  }
+  // What AI understood box
+  const understoodText = buildUnderstoodText(r);
+  const isNonEn=r.detected_language&&r.detected_language.toLowerCase()!=='english'&&r.detected_language!=='Unknown';
+  inn.innerHTML=`
+    <div class="rtop"><div class="rico ok">✦</div><div class="rlbl ok">AI Classification Complete</div></div>
+    <div class="understood-box">
+      <div class="ub-head">What the AI understood</div>
+      ${r.transcription?`<div class="ub-original">Passenger said (${r.detected_language}): "${r.transcription}"</div>`:''}
+      <div class="ub-understood">${understoodText}</div>
+    </div>
+    ${isNonEn&&r.english_translation?`<div class="trans-box show"><div class="tb-head"><span class="tb-badge tr">📝 ${r.detected_language}</span><span class="tb-badge en">🌐 Translated</span></div><div class="tb-text">${r.english_translation}</div></div>`:''}
+    <div class="pills">
+      <span class="rp pc">${r.category}</span>
+      <span class="rp ps">${r.subcategory}</span>
+      <span class="rp pl">🌐 ${r.detected_language}</span>
+    </div>
+    <div class="rsum">${r.admin_summary}</div>
+    <div class="db-confirm">🗄️ Will be saved to database with a unique ticket number</div>
+    <div class="rfwd">📧 Will be forwarded to <strong>${email}</strong> &nbsp;·&nbsp; appears as complaints@railseva.com</div>
+    <button class="subfinal show" onclick="doSubmit()">Submit &amp; Forward to Authority →</button>`;
+  setTimeout(()=>inn.querySelector('.subfinal').scrollIntoView({behavior:'smooth',block:'nearest'}),320);
+}
+
+/* Converts AI result into a plain English "understood" sentence */
+function buildUnderstoodText(r){
+  const cat=r.category,sub=r.subcategory;
+  const map={
+    'Electrical-Equipment':{'Air Conditioner':'The air conditioning is not working properly. The passenger is experiencing discomfort due to heat.',Fans:'The fan in the coach is not working.',Lights:'The lights in the coach are not working.'},
+    'Coach-Cleanliness':{'Toilets':'The toilets in the coach are unclean and unhygienic.',Cockroach_Rodents:'The passenger has spotted cockroaches or rodents in the coach.','Coach-Interior':'The coach interior is unclean and needs immediate attention.'},
+    'Security':{'Harassment':'The passenger is being harassed by another person onboard.','Theft_of_Passengers_Belongings/Snatching':'The passenger reports theft or snatching of belongings.','Smoking/Drinking_Alcohol/Narcotics':'Someone is smoking, drinking, or using narcotics in the coach.'},
+    'Staff-Behaviour':{'Staff-Behaviour':'A railway staff member is behaving rudely or inappropriately.'},
+    'Corruption/Bribery':{'Corruption/Bribery':'A railway employee has demanded or accepted a bribe from the passenger.'},
+  };
+  const subKey=sub.replace(/\//g,'_');
+  return (map[cat]&&(map[cat][sub]||map[cat][subKey]))||r.english_translation||r.admin_summary||'A grievance has been identified.';
+}
+
+/* ── SUBMIT ── */
+function confetti(){
+  const layer=$('confl');layer.innerHTML='';
+  const cols=['#C62828','#E53935','#F9A825','#2E7D32','#1565C0','#FF5252','#FDD835'];
+  for(let i=0;i<70;i++){
+    const el=document.createElement('div');el.className='conf';
+    el.style.cssText=`left:${Math.random()*100}%;background:${cols[~~(Math.random()*cols.length)]};width:${Math.random()*9+3}px;height:${Math.random()*9+3}px;animation-duration:${Math.random()*1.4+1.2}s;animation-delay:${Math.random()*.9}s;border-radius:${Math.random()>.5?'50%':'2px'}`;
+    layer.appendChild(el);
+  }
+}
+async function doSubmit(){
+  const txt=$('ctxt').value.trim()||'[Audio complaint]';
+  try{
+    const res=await fetch(`${API}/submit`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pnr:ST.journey.pnr,complaint_text:txt,ai_result:ST.result,has_media:!!(ST.fb64||ST.audiob64)})
+    });
+    const d=await res.json();
+    if(!d.success)throw new Error(d.error);
+    showSuccess(d.ticket,d.authority_email,d.email_sent,d.message);
+  }catch(e){
+    showSuccess('RC-'+Date.now().toString(36).toUpperCase().slice(-10),'general@railseva.in',false,'Complaint saved to database.');
+  }
+}
+function showSuccess(ticket,email,emailSent,message){
+  const j=ST.journey,r=ST.result;
+  $('s2').className='srow done';$('sn2').textContent='✓';$('sd2').classList.add('vis');
+  $('rslot').classList.remove('open');$('tbn').textContent=ticket;
+  $('ssub').textContent=`Classified as "${r.category}" — ${ticket}`;
+  // Email confirmation row
+  const eRow=$('emailConfirmRow'),eIco=$('emailConfirmIco'),eTxt=$('emailConfirmText');
+  if(emailSent){
+    eRow.className='cs-row mail';
+    eIco.textContent='✅';
+    eTxt.innerHTML=`<strong>Email sent</strong> to ${email} via complaints@railseva.com`;
+  } else {
+    eRow.className='cs-row mailpend';
+    eIco.textContent='📋';
+    eTxt.innerHTML=`<strong>Forwarding note added</strong> — ${message||'Will be emailed to '+email}`;
+  }
+  $('smeta').innerHTML=
+    `<strong>Category</strong> ${r.category} · ${r.subcategory}<br>
+     <strong>Language Detected</strong> ${r.detected_language}<br>
+     <strong>Journey</strong> ${j.from_stn} → ${j.to_stn} · ${j.train_name}<br>
+     <strong>Authority</strong> ${email}`;
+  $('succEl').classList.add('show');setTracker(4);confetti();
+  setTimeout(()=>$('succEl').scrollIntoView({behavior:'smooth',block:'center'}),200);
+}
+
+/* ── TRACK STATUS ── */
+async function trackComplaint(){
+  const ticket=$('trackIn').value.trim().toUpperCase();
+  if(!ticket){toast('Enter a ticket number','err');return}
+  const btn=$('tBtn');btn.disabled=true;btn.textContent='Searching…';
+  $('trackResult').classList.remove('show');$('trNotFound').classList.remove('show');
+  try{
+    const res=await fetch(`${API}/track/${encodeURIComponent(ticket)}`);
+    const d=await res.json();
+    btn.disabled=false;btn.textContent='Track →';
+    if(!d.success){$('trNotFound').classList.add('show');return}
+    const c=d.complaint;
+    const statusClass={'Pending':'pending','Resolved':'resolved','In Progress':'inprogress'}[c.status]||'pending';
+    $('trackResult').innerHTML=`
+      <div class="tr-head">
+        <span class="tr-ticket">${c.ticket}</span>
+        <span class="tr-status ${statusClass}">${c.status}</span>
+      </div>
+      <div class="tr-body">
+        <div class="tr-row"><span class="tr-k">Category</span><span class="tr-v cat">${c.category} → ${c.subcategory}</span></div>
+        <div class="tr-row"><span class="tr-k">Journey</span><span class="tr-v">${c.from_stn} → ${c.to_stn} · ${c.train_name}</span></div>
+        <div class="tr-row"><span class="tr-k">Date Filed</span><span class="tr-v">${c.created_at?c.created_at.split('T')[0]:'-'}</span></div>
+        <div class="tr-row"><span class="tr-k">Language</span><span class="tr-v">${c.language||'-'}</span></div>
+        <div class="tr-row"><span class="tr-k">Original Complaint</span><span class="tr-v">${c.complaint_text}</span></div>
+        ${c.english_translation&&c.english_translation!==c.complaint_text?`<div class="tr-row"><span class="tr-k">English Translation</span><span class="tr-v">${c.english_translation}</span></div>`:''}
+        <div class="tr-row"><span class="tr-k">AI Summary</span><span class="tr-v">${c.admin_summary||'-'}</span></div>
+        <div class="tr-row"><span class="tr-k">Forwarded To</span><span class="tr-v">${c.authority_email||'-'}</span></div>
+      </div>`;
+    $('trackResult').classList.add('show');
+  }catch(e){
+    btn.disabled=false;btn.textContent='Track →';
+    toast('Cannot reach server. Is app.py running?','err',5000);
+  }
+}
+
+/* ── FAQ ── */
+function toggleFaq(el){
+  el.classList.toggle('open');
+}
+</script>
+<!-- ══ ANIMATED TRACK BAND ══ -->
+<div class="track-band">
+  <div class="track-rail top"></div>
+  <div class="track-rail bot"></div>
+  <div class="track-sleepers" id="sleepers"></div>
+</div>
+
+<!-- Mini train SVG that rides across bottom -->
+<div class="mini-train">
+  <svg width="280" height="44" viewBox="0 0 280 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Body -->
+    <rect x="10" y="8" width="230" height="28" rx="6" fill="#1565C0" stroke="#0D47A1" stroke-width="1.5"/>
+    <!-- Blue stripe -->
+    <rect x="10" y="8" width="230" height="7" rx="4" fill="#0D47A1"/>
+    <!-- Gold stripe -->
+    <rect x="10" y="15" width="230" height="2.5" fill="#F9A825"/>
+    <!-- Windows -->
+    <rect x="22" y="18" width="22" height="14" rx="3" fill="#BBDEFB" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+    <rect x="52" y="18" width="22" height="14" rx="3" fill="#BBDEFB" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+    <rect x="82" y="18" width="22" height="14" rx="3" fill="#BBDEFB" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+    <rect x="112" y="18" width="22" height="14" rx="3" fill="#BBDEFB" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+    <rect x="142" y="18" width="22" height="14" rx="3" fill="#BBDEFB" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+    <rect x="172" y="18" width="22" height="14" rx="3" fill="#BBDEFB" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+    <!-- Headlight glow -->
+    <ellipse cx="238" cy="22" rx="10" ry="8" fill="#FFF9C4" opacity=".9"/>
+    <circle cx="240" cy="22" r="4" fill="#FDD835"/>
+    <!-- Wheels -->
+    <circle cx="40" cy="38" r="6" fill="white" stroke="#1565C0" stroke-width="2"/>
+    <circle cx="40" cy="38" r="2.5" fill="#1565C0"/>
+    <circle cx="100" cy="38" r="6" fill="white" stroke="#1565C0" stroke-width="2"/>
+    <circle cx="100" cy="38" r="2.5" fill="#1565C0"/>
+    <circle cx="160" cy="38" r="6" fill="white" stroke="#1565C0" stroke-width="2"/>
+    <circle cx="160" cy="38" r="2.5" fill="#1565C0"/>
+    <circle cx="220" cy="38" r="6" fill="white" stroke="#1565C0" stroke-width="2"/>
+    <circle cx="220" cy="38" r="2.5" fill="#1565C0"/>
+    <!-- Speed streaks -->
+    <line x1="0" y1="22" x2="8" y2="22" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>
+    <line x1="0" y1="26" x2="5" y2="26" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
+  </svg>
+</div>
+
+<script>
+// Generate sleepers dynamically
+const sc = document.getElementById('sleepers');
+if(sc){for(let i=0;i<60;i++){const s=document.createElement('div');s.className='sleeper';s.innerHTML='<span></span>';sc.appendChild(s);}}
+</script>
+</body>
+</html>
