@@ -4,13 +4,7 @@ RailSeva — Flask Backend  v5
 Run:   python app.py
 Open:  http://localhost:5000
 
-What's new in v5:
-  - PNRs stored in SQLite pnrs table (not hardcoded dict)
-  - Complaint approval via magic link button in email
-  - /api/admin/approve/<token> — one click to resolve from email
-  - /admin — browser admin panel with approve buttons
-  - /api/admin/add-pnr — add real PNRs without code changes
-════════════════════════════════════════════════════════
+
 """
 
 from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for
